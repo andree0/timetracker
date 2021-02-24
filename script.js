@@ -21,14 +21,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const title = e.currentTarget.querySelector("input[name='title']").value;
         const description = e.currentTarget.querySelector("input[name='description']").value;
 
-        apiCreateTask(title, description).then(
-            (response) => {
-                const task = response.data
-                renderTask(task.id, task.title, task.description, task.status);
-            }
-        )
+        if (title.length && description.length) {
+            apiCreateTask(title, description).then(
+                (response) => {
+                    const task = response.data
+                    renderTask(task.id, task.title, task.description, task.status);
+                }
+            )
+        } else {
+            alert('Wypełnij pola danymi!')
+        }
     });
-
 
 });
 
@@ -40,7 +43,7 @@ function apiListTasks() {
     }).then(
         (resp) => {
             if (!resp.ok) {
-                alert('zjebałeś')
+                alert('Wystąpił błąd! Otwórz devtools i zakładkę Sieć/Network, i poszukaj przyczyny')
             }
             return resp.json();
         }
@@ -48,6 +51,9 @@ function apiListTasks() {
 }
 
 function renderTask(taskId, title, description, status) {
+    document.querySelector("input[name='title']").value = "";
+    document.querySelector("input[name='description']").value = "";
+
     const section = document.createElement('section');
     section.className = 'card mt-5 shadow-sm';
     document.querySelector("main").appendChild(section);
@@ -87,6 +93,67 @@ function renderTask(taskId, title, description, status) {
                 }
             );
         });
+
+        const operationsListUl = document.createElement('ul');
+        section.className = 'list-group list-group-flush';
+        section.appendChild(operationsListUl);
+
+        apiListOperationsForTask(taskId).then(
+            (response) => {
+                response.data.forEach(
+                    (operation) => { renderOperation(
+                        operationsListUl,
+                        operation.id,
+                        status,
+                        operation.description,
+                        operation.timeSpent);
+                    }
+                )
+            }
+        )
+
+
+        const addOperationDiv = document.createElement('div');
+        addOperationDiv.className = 'card-body js-task-open-only';
+        section.appendChild(addOperationDiv);
+
+        const addOperationForm = document.createElement('form');
+        addOperationDiv.appendChild(addOperationForm);
+
+        const inputOperationDiv = document.createElement('div');
+        inputOperationDiv.className = 'input-group';
+        addOperationForm.appendChild(inputOperationDiv);
+
+        const operationInput = document.createElement('input');
+        operationInput.className = 'form-control';
+        operationInput.placeholder = 'Operation description';
+        operationInput.type = 'text';
+        operationInput.minLength = 5;
+        inputOperationDiv.appendChild(operationInput);
+
+        const buttonAddOperationDiv = document.createElement('div');
+        buttonAddOperationDiv.className = 'input-group-append';
+        inputOperationDiv.appendChild(buttonAddOperationDiv);
+
+        const addOperationButton = document.createElement('button');
+        addOperationButton.className = 'btn btn-info';
+        addOperationButton.innerText = 'Add';
+        buttonAddOperationDiv.appendChild(addOperationButton);
+
+        addOperationForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (operationInput.value.length) {
+                apiCreateOperationForTask(taskId, operationInput.value).then(
+                    (response) => {
+                        const operation = response.data;
+                        renderOperation(operationsListUl, operation.id, status, operation.description, operation.timeSpent);
+                    }
+                );
+                operationInput.value = "";
+            } else {
+                alert('Wypełnij pole!')
+            }
+        });
     }
 
     const deleteButton = document.createElement('button');
@@ -102,63 +169,6 @@ function renderTask(taskId, title, description, status) {
         );
     })
 
-    const operationsListUl = document.createElement('ul');
-    section.className = 'list-group list-group-flush';
-    section.appendChild(operationsListUl);
-
-    apiListOperationsForTask(taskId).then(
-        (response) => {
-            response.data.forEach(
-                (operation) => { renderOperation(
-                    operationsListUl,
-                    operation.id,
-                    status,
-                    operation.description,
-                    operation.timeSpent);
-                }
-            )
-        }
-    )
-
-    const addOperationDiv = document.createElement('div');
-    addOperationDiv.className = 'card-body js-task-open-only';
-    section.appendChild(addOperationDiv);
-
-    const addOperationForm = document.createElement('form');
-    addOperationDiv.appendChild(addOperationForm);
-
-    const inputOperationDiv = document.createElement('div');
-    inputOperationDiv.className = 'input-group';
-    addOperationForm.appendChild(inputOperationDiv);
-
-    const operationInput = document.createElement('input');
-    operationInput.className = 'form-control';
-    operationInput.placeholder = 'Operation description';
-    operationInput.type = 'text';
-    operationInput.minLength = 5;
-    inputOperationDiv.appendChild(operationInput);
-
-    const buttonAddOperationDiv = document.createElement('div');
-    buttonAddOperationDiv.className = 'input-group-append';
-    inputOperationDiv.appendChild(buttonAddOperationDiv);
-
-    const addOperationButton = document.createElement('button');
-    addOperationButton.className = 'btn btn-info';
-    addOperationButton.innerText = 'Add';
-    buttonAddOperationDiv.appendChild(addOperationButton);
-
-    addOperationForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        apiCreateOperationForTask(taskId, operationInput.value).then(
-            (response) => {
-                const operation = response.data;
-                renderOperation(operationsListUl, operation.id, status, operation.description, operation.timeSpent);
-            }
-        );
-        operationInput.value = "";
-    });
-
 }
 
 function apiListOperationsForTask(taskId) {
@@ -169,7 +179,7 @@ function apiListOperationsForTask(taskId) {
     }).then(
         (resp) => {
             if (!resp.ok) {
-                alert('Zjebałeś')
+                alert('Wystąpił błąd! Otwórz devtools i zakładkę Sieć/Network, i poszukaj przyczyny')
             }
             return resp.json();
     })
@@ -263,7 +273,7 @@ function apiCreateTask(title, description) {
     }).then(
         (resp) => {
             if (!resp.ok) {
-                alert('Zjebałeś na maksa')
+                alert('Wystąpił błąd! Otwórz devtools i zakładkę Sieć/Network, i poszukaj przyczyny')
             }
             return resp.json();
         }
@@ -277,7 +287,7 @@ function apiDeleteTask(taskId) {
     }).then(
         (resp) => {
             if (!resp.ok) {
-                alert('Zjebałeś usuwanie zadania')
+                alert('Wystąpił błąd! Otwórz devtools i zakładkę Sieć/Network, i poszukaj przyczyny')
             }
             return resp.json()
         }
@@ -292,7 +302,7 @@ function apiCreateOperationForTask(taskId, description) {
     }).then(
         (resp) => {
             if (!resp.ok) {
-                alert('Zjebałeś dodanie operavji')
+                alert('Wystąpił błąd! Otwórz devtools i zakładkę Sieć/Network, i poszukaj przyczyny')
             }
             return resp.json()
         }
@@ -307,7 +317,7 @@ function apiUpdateOperation(operationId, description, timeSpent) {
     }).then(
         (resp) => {
             if (!resp.ok) {
-                alert('znowy zepsułeś')
+                alert('Wystąpił błąd! Otwórz devtools i zakładkę Sieć/Network, i poszukaj przyczyny')
             }
             return resp.json()
         }
@@ -321,7 +331,7 @@ function apiDeleteOperation(operationId) {
     }).then(
         (resp) => {
             if (!resp.ok) {
-                alert('znowy zepsułeś')
+                alert('Wystąpił błąd! Otwórz devtools i zakładkę Sieć/Network, i poszukaj przyczyny')
             }
             return resp.json()
         }
@@ -336,7 +346,7 @@ function apiUpdateTask(taskId, title, description) {
     }).then(
         (resp) => {
             if (!resp.ok) {
-                alert('znowy zepsułeś')
+                alert('Wystąpił błąd! Otwórz devtools i zakładkę Sieć/Network, i poszukaj przyczyny')
             }
             return resp.json()
         }
