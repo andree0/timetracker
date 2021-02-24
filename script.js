@@ -2,7 +2,6 @@ const apikey = 'ad0b9056-8273-45ff-afa8-231f9496f1b2';
 const apihost = 'https://todo-api.coderslab.pl';
 
 
-
 document.addEventListener('DOMContentLoaded', function() {
     apiListTasks().then(
         (response) => {
@@ -74,9 +73,20 @@ function renderTask(taskId, title, description, status) {
 
     if (status === 'open') {
         const finishButton = document.createElement('button');
-        finishButton.className = 'btn btn-dark btn-sm';
+        finishButton.className = 'btn btn-dark btn-sm js-task-open-only';
         finishButton.innerText = 'Finish';
         headerRightDiv.appendChild(finishButton);
+
+        finishButton.addEventListener('click', () => {
+            apiUpdateTask(taskId, title, description, status).then(
+                () => {
+                    const toRemove = section.querySelectorAll(".js-task-open-only");
+                    toRemove.forEach(
+                        (el) => el.remove()
+                    );
+                }
+            );
+        });
     }
 
     const deleteButton = document.createElement('button');
@@ -111,7 +121,7 @@ function renderTask(taskId, title, description, status) {
     )
 
     const addOperationDiv = document.createElement('div');
-    addOperationDiv.className = 'card-body';
+    addOperationDiv.className = 'card-body js-task-open-only';
     section.appendChild(addOperationDiv);
 
     const addOperationForm = document.createElement('form');
@@ -181,6 +191,7 @@ function renderOperation(operationsList, operationId, status, operationDescripti
 
     if (status === "open") {
         const buttonsDiv = document.createElement('div');
+        buttonsDiv.className = 'js-task-open-only';
         operationLi.appendChild(buttonsDiv);
 
         const button15m = document.createElement('button');
@@ -235,11 +246,11 @@ function formatTime(time) {
         return time + 'm';
     } else {
         const hours = Math.floor(time / 60);
-        const minutes = ((time / 60) - hours) * 60;
+        const minutes = time % 60;
         if (minutes === 0) {
             return hours + 'h '
         } else {
-           return `${hours}h ${minutes}m`;
+           return hours + 'h ' + minutes + 'm';
         }
     }
 }
@@ -317,8 +328,18 @@ function apiDeleteOperation(operationId) {
     )
 }
 
-function apiUpdateTask() {
-    console.log('funkcja apiUpdateTask');
+function apiUpdateTask(taskId, title, description) {
+    return fetch(apihost + `/api/tasks/${taskId}`, {
+        headers: { Authorization: apikey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({title: title, description: description, status: 'closed'}),
+        method: 'PUT'
+    }).then(
+        (resp) => {
+            if (!resp.ok) {
+                alert('znowy zepsułeś')
+            }
+            return resp.json()
+        }
+    )
 }
 
-apiUpdateTask();
