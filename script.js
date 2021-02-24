@@ -4,31 +4,33 @@ const apihost = 'https://todo-api.coderslab.pl';
 
 
 document.addEventListener('DOMContentLoaded', function() {
-apiListTasks().then(
-    (response) => {
-        response.data.forEach(
-            (task) => {
+    apiListTasks().then(
+        (response) => {
+            response.data.forEach(
+                (task) => {
+                    renderTask(task.id, task.title, task.description, task.status);
+                }
+            );
+        }
+    );
+
+    const addNewTaskForm = document.querySelector("form.js-task-adding-form");
+
+    addNewTaskForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const title = e.currentTarget.querySelector("input[name='title']").value;
+        const description = e.currentTarget.querySelector("input[name='description']").value;
+
+        apiCreateTask(title, description).then(
+            (response) => {
+                const task = response.data
                 renderTask(task.id, task.title, task.description, task.status);
             }
-        );
-    }
-);
+        )
+    });
 
-const addNewTaskForm = document.querySelector("form.js-task-adding-form");
 
-addNewTaskForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const title = e.currentTarget.querySelector("input[name='title']").value;
-    const description = e.currentTarget.querySelector("input[name='description']").value;
-
-    apiCreateTask(title, description).then(
-        (response) => {
-            const task = response.data
-            renderTask(task.id, task.title, task.description, task.status);
-        }
-    )
-});
 });
 
 function apiListTasks() {
@@ -84,7 +86,9 @@ function renderTask(taskId, title, description, status) {
 
     deleteButton.addEventListener('click', () => {
         apiDeleteTask(taskId).then(
-            section.remove()
+            () => {
+                section.remove();
+            }
         );
     })
 
@@ -133,6 +137,18 @@ function renderTask(taskId, title, description, status) {
     addOperationButton.innerText = 'Add';
     buttonAddOperationDiv.appendChild(addOperationButton);
 
+    addOperationForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        apiCreateOperationForTask(taskId, operationInput.value).then(
+            (response) => {
+                const operation = response.data;
+                renderOperation(operationsListUl, operation.id, status, operation.description, operation.timeSpent);
+            }
+        );
+        operationInput.value = "";
+    });
+
 }
 
 function apiListOperationsForTask(taskId) {
@@ -172,15 +188,45 @@ function renderOperation(operationsList, operationId, status, operationDescripti
         button15m.innerText = '+15m';
         buttonsDiv.appendChild(button15m);
 
+        button15m.addEventListener('click', () => {
+            timeSpent += 15;
+
+            apiUpdateOperation(operationId, operationDescription, timeSpent).then(
+                (response) => {
+                    const changedOperation = response.data;
+                    time.innerText = formatTime(changedOperation.timeSpent);
+                }
+            )
+        });
+
         const button1h = document.createElement('button');
         button1h.className = 'btn btn-outline-success btn-sm mr-2';
         button1h.innerText = '+1h';
         buttonsDiv.appendChild(button1h);
 
+        button1h.addEventListener('click', () => {
+            timeSpent += 60;
+
+            apiUpdateOperation(operationId, operationDescription, timeSpent).then(
+                (response) => {
+                    const changedOperation = response.data;
+                    time.innerText = formatTime(changedOperation.timeSpent);
+                }
+            )
+        });
+
         const deleteButton = document.createElement('button');
         deleteButton.className = 'btn btn-outline-danger btn-sm';
         deleteButton.innerText = 'Delete';
         buttonsDiv.appendChild(deleteButton);
+
+        deleteButton.addEventListener('click', () => {
+            apiDeleteOperation(operationId).then(
+                () => {
+                    operationLi.remove();
+                }
+            );
+        });
     }
 }
 
@@ -189,11 +235,11 @@ function formatTime(time) {
         return time + 'm';
     } else {
         const hours = Math.floor(time / 60);
-        const minutes = (time % 60) * 60;
+        const minutes = ((time / 60) - hours) * 60;
         if (minutes === 0) {
             return hours + 'h '
         } else {
-           return hours + 'h ' + minutes + 'm';
+           return `${hours}h ${minutes}m`;
         }
     }
 }
@@ -227,23 +273,52 @@ function apiDeleteTask(taskId) {
     )
 }
 
-function apiCreateOperationForTask() {
-    console.log('funkcja apiCreateOperationForTask');
+function apiCreateOperationForTask(taskId, description) {
+    return fetch(apihost + `/api/tasks/${taskId}/operations`, {
+        method: 'POST',
+        headers: { Authorization: apikey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({description: description, timeSpent: 0})
+    }).then(
+        (resp) => {
+            if (!resp.ok) {
+                alert('Zjebałeś dodanie operavji')
+            }
+            return resp.json()
+        }
+    )
 }
 
-function apiUpdateOperation() {
-    console.log('funkcja apiUpdateOperation');
+function apiUpdateOperation(operationId, description, timeSpent) {
+    return fetch(apihost + `/api/operations/${operationId}`, {
+        headers: { Authorization: apikey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({description: description, timeSpent: timeSpent}),
+        method: 'PUT'
+    }).then(
+        (resp) => {
+            if (!resp.ok) {
+                alert('znowy zepsułeś')
+            }
+            return resp.json()
+        }
+    )
 }
 
-function apiDeleteOperation() {
-    console.log('funkcja apiDeleteOperation');
+function apiDeleteOperation(operationId) {
+    return fetch(apihost + `/api/operations/${operationId}`, {
+        headers: { Authorization: apikey, 'Content-Type': 'application/json' },
+        method: 'DELETE'
+    }).then(
+        (resp) => {
+            if (!resp.ok) {
+                alert('znowy zepsułeś')
+            }
+            return resp.json()
+        }
+    )
 }
 
 function apiUpdateTask() {
     console.log('funkcja apiUpdateTask');
 }
 
-apiCreateOperationForTask();
-apiUpdateOperation();
-apiDeleteOperation();
 apiUpdateTask();
